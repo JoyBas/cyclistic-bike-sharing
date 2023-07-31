@@ -1,0 +1,619 @@
+---
+title: "capstone_project"
+author: "Joy"
+date: "2023-07-15"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+# Case Study: How Does a Bike-Share Navigate Speedy Success?
+
+## Purpose: 
+
+The goal of this project is to help the Cyclistic executive team to understand how casual riders and annual members use Cyclistic bikes differently.
+This project aims to discover patterns in the Cyclistic dataset that will give insights towards designing a new marketing strategy to convert casual riders into annual members.
+
+
+## The dataset
+The dataset is publicly made available by Motivate International Inc to be used under the [Data License Agreement](https://www.divvybikes.com/data-license-agreement)
+The data is in a CSV file and it includes data from the past twelve months June 2022 - May 2023. 
+The data has some missing values but it is aligned with the business objectives.
+
+
+## Scenario
+You are a junior data analyst working in the marketing analyst team at Cyclistic, a bike-share company in Chicago. The director of marketing believes the company’s future success depends on maximizing the number of annual memberships. 
+
+Therefore, your team wants to understand how casual riders and annual members use Cyclistic bikes differently. From these insights, your team will design a new marketing strategy to convert casual riders into annual members. But first, Cyclistic executives must approve your recommendations, so they must be backed up with compelling data insights and professional data visualizations.
+
+
+## Characters and teams
+* Cyclistic: A bike-share program that features more than 5,800 bicycles and 600 docking stations. Cyclistic sets itself apart by also offering reclining bikes, hand tricycles, and cargo bikes, making bike-share more inclusive to people with disabilities and riders who can’t use a standard two-wheeled bike. The majority of riders opt for traditional bikes; about 8% of riders use the assistive options. Cyclistic users are more likely to ride for leisure, but about 30% use them to commute to work each day.
+* Lily Moreno: The director of marketing and your manager. Moreno is responsible for the development of campaigns and initiatives to promote the bike-share program. These may include email, social media, and other channels.
+* Cyclistic marketing analytics team: A team of data analysts who are responsible for collecting, analyzing, and
+reporting data that helps guide Cyclistic marketing strategy. You joined this team six months ago and have been busy learning about Cyclistic’s mission and business goals — as well as how you, as a junior data analyst, can help Cyclistic achieve them.
+* Cyclistic executive team: The notoriously detail-oriented executive team will decide whether to approve the
+recommended marketing program.
+
+
+## About the company
+In 2016, Cyclistic launched a successful bike-share offering. Since then, the program has grown to a fleet of 5,824 bicycles that are geotracked and locked into a network of 692 stations across Chicago. The bikes can be unlocked from one station and returned to any other station in the system anytime.
+Until now, Cyclistic’s marketing strategy relied on building general awareness and appealing to broad consumer segments.
+
+One approach that helped make these things possible was the flexibility of its pricing plans: single-ride passes, full-day passes, and annual memberships. Customers who purchase single-ride or full-day passes are referred to as casual riders. Customers
+who purchase annual memberships are Cyclistic members.
+
+Cyclistic’s finance analysts have concluded that annual members are much more profitable than casual riders. Although the pricing flexibility helps Cyclistic attract more customers, Moreno believes that maximizing the number of annual members will
+be key to future growth. Rather than creating a marketing campaign that targets all-new customers, Moreno believes there is a very good chance to convert casual riders into members. She notes that casual riders are already aware of the Cyclistic program and have chosen Cyclistic for their mobility needs.
+
+Moreno has set a clear goal: Design marketing strategies aimed at converting casual riders into annual members. In order to do that, however, the marketing analyst team needs to better understand how annual members and casual riders differ, why casual riders would buy a membership, and how digital media could affect their marketing tactics. Moreno and her team are interested in analyzing the Cyclistic historical bike trip data to identify trends.
+
+
+
+## Install and load the packages needed
+
+```{r message=FALSE, warning=FALSE}
+library(tidyverse)
+```
+
+
+```{r message=FALSE, warning=FALSE}
+library(lubridate)
+```
+
+
+```{r message=FALSE, warning=FALSE}
+library(ggplot2)
+```
+
+
+```{r message=FALSE, warning=FALSE}
+library(janitor)
+```
+
+
+```{r message=FALSE, warning=FALSE}
+library(hms)
+```
+
+
+## Collect data
+Loading the csv files into R
+
+```{r message=FALSE}
+june_2022 <- read_csv("202206-divvy-tripdata.csv")
+july_2022 <- read_csv("202207-divvy-tripdata.csv")
+august_2022 <- read_csv("202208-divvy-tripdata.csv")
+september_2022 <- read_csv("202209-divvy-publictripdata.csv")
+october_2022 <- read_csv("202210-divvy-tripdata.csv")
+november_2022 <- read_csv("202211-divvy-tripdata.csv")
+december_2022 <- read_csv("202212-divvy-tripdata.csv")
+january_2023 <- read_csv("202301-divvy-tripdata.csv")
+february_2023 <- read_csv("202302-divvy-tripdata.csv")
+march_2023 <- read_csv("202303-divvy-tripdata.csv")
+april_2023 <- read_csv("202304-divvy-tripdata.csv")
+may_2023 <- read.csv("202305-divvy-tripdata.csv")
+
+```
+
+## Wrangle data and combine into a single file
+Before combining the dataframes into one, compare_df_cols() will be used to check for any mismatch
+
+```{r}
+compare_df_cols(june_2022, july_2022, august_2022, september_2022, october_2022, november_2022, december_2022, january_2023, february_2023, march_2023, april_2023, may_2023, return = "mismatch")
+```
+
+After inspecting, the datatype in the date column in the may_2023 dataframe needs to be changed from **chr** to **datetime**
+
+```{r}
+may_2023 <-  mutate(may_2023, started_at = as.POSIXct(started_at)
+                    , ended_at = as.POSIXct(ended_at)) 
+
+```
+
+Stack the individual dataframes into one
+
+```{r}
+all_trips <- bind_rows(june_2022, july_2022, august_2022, september_2022, october_2022, november_2022, december_2022, january_2023, february_2023, march_2023, april_2023, may_2023)
+
+```
+
+## Clean up and add data to prepare for analysis
+Inspecting the dataframe
+
+The dimension before cleaning or adding any needed rows for calculations is **5829030 rows and 13 columns **
+
+```{r}
+dim(all_trips)
+```
+
+To see how many observations fall under each usertype
+
+```{r}
+table(all_trips$member_casual)
+```
+
+
+## Add new columns for aggregation at these levels.
+## Started_at column
+New columns that list the date, time, month, day, year, day_of_week, hour of each ride will be added. 
+
+
+```{r}
+all_trips$date <- as.Date(all_trips$started_at) # converts the started_at column to date
+```
+
+
+```{r}
+all_trips$time <- format(as.POSIXct(all_trips$started_at), format = "%H:%M:%S")
+```
+
+
+```{r}
+all_trips$month <- format(as.Date(all_trips$date), "%m")
+```
+
+
+```{r}
+all_trips$day <- format(as.Date(all_trips$date), "%d")
+```
+
+
+```{r}
+all_trips$year <- format(as.Date(all_trips$date), "%Y")
+```
+
+
+```{r}
+all_trips$day_of_week <- format(as.Date(all_trips$date), "%A")
+```
+
+
+```{r}
+all_trips$hour <- format(as.POSIXct(all_trips$started_at), format = "%H")
+```
+
+
+```{r}
+all_trips$time <- as_hms(all_trips$time) # convert the time column to the the hour, minute,                                           and second format
+```
+
+
+For the time_of_day column, *breaks* and *labels* for **morning, afternoon, evening, night** will be created
+
+```{r}
+breaks <- hour(hm("00:00", "05:59", "11:59", "17:59", "23:59"))
+labels <- c("Night", "Morning", "Afternoon", "Evening")
+
+```
+
+
+```{r}
+all_trips$time_of_day <- cut(x=hour(all_trips$time), breaks = breaks, labels = labels, include.lowest=TRUE)
+```
+
+
+#### Add a ride_length column
+The total in (in seconds) a bike was rented
+
+```{r}
+all_trips$ride_length <- difftime(all_trips$ended_at,all_trips$started_at)
+
+```
+
+Convert ride_length from **difftime** to **numeric** so we can run calculations on the data
+
+```{r}
+all_trips$ride_length <- as.numeric(as.character(all_trips$ride_length))
+```
+
+
+Check the dataframe using str() to see newly added columns and datatypes
+
+```{r}
+dim(all_trips)
+```
+
+
+Find the sum of missing values in each column of the dataframe
+
+```{r}
+colSums(is.na(all_trips))
+```
+
+
+
+# Cleaning the data
+
+Before cleaning, there are **5829030** rows in the dataset.
+
+Some entries are for when bikes were taken out of docks and checked for quality by Divvy or ride_length was negative. A new dataframe will be created (all_trips_v2) since data is being removed.
+
+```{r}
+all_trips_v2 <- all_trips[!(all_trips$start_station_name == "HQ QR" | all_trips$ride_length<0),]
+```
+
+
+Before continuing with cleaning the dataset, it is important to discover how many unique stations(locations) being used by Cyclistic users. To do this, **unique_stations** dataframe will be created and used.
+
+Step 1: Count the number of unique start_station_name
+
+```{r}
+start_station <- all_trips_v2 %>% 
+  group_by(start_station_name) %>%
+  summarise(number_of_rides = n())	%>%		# calculates the number of rides
+  arrange(desc(number_of_rides))		
+```
+
+
+Step 2: Count the number of unique end_station_name
+```{r}
+end_station <- all_trips_v2 %>% 
+  group_by(end_station_name) %>%
+  summarise(number_of_rides = n())	%>%		# calculates the number of rides
+  arrange(desc(number_of_rides))		
+```
+
+
+Rename the column *end_station_name* in the end_station dataframe to *start_station_name* to make easy for combining both dataframes
+
+```{r}
+end_station <- rename(end_station, start_station_name = end_station_name)
+```
+
+Step 3: bind both dataframes
+
+```{r} 
+unique_stations <- bind_rows(start_station, end_station) 
+```
+
+Step 4: Group by start_station_name to know the unique count of stations
+
+```{r}
+unique_stations <- unique_stations %>% 
+  group_by(start_station_name) %>%
+  summarise(number = n()) %>%
+  arrange(desc(number))
+```
+There are **1883** unique stations(locations) used by Cyclistic users.
+
+
+
+## Data Cleaning continuation
+#### Remove NA values
+
+There are some entries that contain start_station_name or start_station_id but no data for end_station_name or end_station_id and vice versa - filter out rows that contain NA values
+
+
+```{r}
+all_trips_v2 <- all_trips_v2 %>% drop_na()
+```
+
+After dropping rows that contain NA values, there are **4635491** rows left in the dataframe
+
+
+```{r}
+str(all_trips_v2) # to check the structure of the dataframe
+```
+
+
+To check if there are still missing values in the dataframe
+
+```{r}
+colSums(is.na(all_trips_v2))
+```
+
+
+
+## Descriptive analysis
+
+#### Total rides by start_station_name
+
+```{r}
+all_trips_v2 %>% 
+  group_by(start_station_name) %>%
+  summarise(number_of_rides = n())	%>%		# counts the number of rides
+  arrange(desc(number_of_rides))		
+```
+
+#### Total rides by end_station_name
+
+```{r}
+all_trips_v2 %>% 
+  group_by(end_station_name) %>%
+  summarise(number_of_rides = n())	%>%		# counts the number of rides
+  arrange(desc(number_of_rides))		
+```
+The calculation above shows that the most rides originated from stations with no records of their station names. This means that there are still blank values in the dataset.
+
+
+
+## Dataframe containing blanks
+
+The dataframe **missing_stations** contains records with either blank start_station_name or end_station_name
+
+```{r}
+missing_start <- all_trips_v2 %>%
+  filter(start_station_name=="") # filters for blank start_station_name 
+```
+
+
+Filter out rows where there are no end_station_name
+```{r}
+missing_end <- all_trips_v2 %>%
+  filter(end_station_name=="")
+```
+
+
+```{r}
+missing_stations <- bind_rows(missing_start, missing_end)
+```
+
+
+
+## Data Cleaning continuation
+
+In order to continue with the analysis, a new dataframe **all_trips_v3** will be created which contains rows where neither the start_station_name or end_station_name is blank
+
+```{r}
+all_trips_v3 <- all_trips_v2 %>%
+  filter(!start_station_name=="") # filters for non-blank start_station_name 
+```
+
+
+Filter out rows where there are no end_station_name
+```{r}
+all_trips_v3 <-  all_trips_v3 %>%
+  filter(!end_station_name=="") # filters for non-blank end_station_name
+```
+
+
+
+#### Calculating total rides by station names again after removing the rows with blank
+
+Total rides by enstart_station_name
+
+```{r message=FALSE}
+total_rides_start_station <- all_trips_v3 %>% 
+  group_by(start_station_name, member_casual) %>%
+  summarise(number_of_rides = n()) %>% # calculates the number of rides
+  arrange(desc(number_of_rides))
+
+```
+
+Total rides by end_station_name
+
+```{r}
+total_rides_end_station <- all_trips_v3 %>% 
+  group_by(end_station_name) %>%
+  summarise(number_of_rides = n())	%>% # calculates the number of rides
+  arrange(desc(number_of_rides)) 
+
+```
+
+
+## Summary statistics on the ride_length column
+
+**All figures(ride_length) in seconds**
+
+```{r}
+summary(all_trips_v3$ride_length) 
+```
+
+## Compare members and casual users
+
+Total number of members vs casual users
+
+```{r}
+all_trips_v3 %>%
+  group_by(member_casual) %>%
+  summarize(number = n())
+```
+
+Sum of rides by members vs casual users
+
+```{r}
+aggregate(all_trips_v3$ride_length ~ all_trips_v3$member_casual, FUN = sum)
+```
+
+Mean rides by members vs casual users
+
+```{r}
+aggregate(all_trips_v3$ride_length ~ all_trips_v3$member_casual, FUN = mean)
+```
+
+Median rides by members vs casual users
+
+```{r}
+aggregate(all_trips_v3$ride_length ~ all_trips_v3$member_casual, FUN = median)
+```
+
+
+Maximum ride_length by members vs casual users
+
+```{r}
+aggregate(all_trips_v3$ride_length ~ all_trips_v3$member_casual, FUN = max)
+```
+
+
+Minimum ride_length by members vs casual users
+
+```{r}
+aggregate(all_trips_v3$ride_length ~ all_trips_v3$member_casual, FUN = min)
+```
+
+
+## Number of rides over time for members vs casual users
+
+```{r message=FALSE}
+sum_rides_over_time <- all_trips_v3 %>%
+  group_by(date, member_casual) %>%
+  summarize(ride_length = n())
+```
+
+
+## Calculate the average ride time by each day for members vs casual users
+
+In order for the days of the week to appear orderly:
+
+```{r}
+all_trips_v3$day_of_week <- ordered(all_trips_v3$day_of_week, levels=c("Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"))
+
+```
+
+
+```{r message=FALSE}
+aggregate(all_trips_v3$ride_length ~ all_trips_v3$member_casual + all_trips_v3$day_of_week, FUN = mean)
+
+```
+
+
+## Analyze total rides by time of day
+
+```{r message=FALSE}
+all_trips_v3 %>% 
+  group_by(time_of_day) %>% 
+  count(time_of_day)
+```
+
+
+## Compare type of bike mostly used by different users
+```{r message=FALSE}
+all_trips_v3 %>% 
+  group_by(rideable_type, member_casual) %>% 
+  summarise(number_of_rides = n()) 
+```
+
+
+
+## Analyze total rides
+
+#### Sum ride_length (from start stations) by hour and users
+
+```{r message=FALSE}
+all_trips_v3 %>% 
+  group_by(hour, member_casual) %>% 
+  summarise(sum_of_rides = sum(ride_length))
+
+```
+
+
+#### Total rides by month
+
+```{r message=FALSE}
+all_trips_v3 %>% 
+  group_by(month, member_casual) %>% 
+  summarise(number_of_rides = n()) 
+
+```
+
+
+## Analyze ridership data by usertype and weekday
+
+```{r message=FALSE}
+all_trips_v3 %>% 
+  mutate(weekday = wday(started_at, label = TRUE)) %>%  #creates weekday field using wday()
+  group_by(member_casual, weekday) %>%  #groups by usertype and weekday
+  # filter(member_casual == "casual") %>% # uncomment to filter for casual members only
+  summarise(number_of_rides = n()			#calculates the number of rides and average duration 
+  ,average_duration = mean(ride_length)) %>% 		# calculates the average duration
+  arrange(member_casual, weekday)
+```
+
+
+Separate the above dataframe for members and casual users to allow for visualization in tableau
+
+```{r message=FALSE}
+casual <- all_trips_v3 %>% 
+  mutate(weekday = wday(started_at, label = TRUE)) %>%  #creates weekday field using wday()
+  group_by(member_casual, weekday) %>%  #groups by usertype and weekday
+  filter(member_casual == "casual") %>%
+  summarise(number_of_rides = n()			#calculates the number of rides and average duration 
+  ,average_duration = mean(ride_length)) %>% 		# calculates the average duration
+  arrange(member_casual, weekday)
+```
+
+
+rename columns
+```{r}
+casual <- casual %>% rename(casual = member_casual, casual_weekday = weekday, casual_rides = number_of_rides, casual_average = average_duration)
+```
+
+
+```{r message=FALSE}
+member <- all_trips_v3 %>% 
+  mutate(weekday = wday(started_at, label = TRUE)) %>%  #creates weekday field using wday()
+  group_by(member_casual, weekday) %>%  #groups by usertype and weekday
+  filter(member_casual == "member") %>%
+  summarise(number_of_rides = n()			#calculates the number of rides and average duration 
+  ,average_duration = mean(ride_length)) %>% 		# calculates the average duration
+  arrange(member_casual, weekday)
+```
+
+
+rename columns
+```{r}
+member <- member %>% rename(member = member_casual, member_weekday = weekday, member_rides = number_of_rides, member_average = average_duration)
+```
+
+
+bind member and casual dataframes 
+```{r}
+usertype_member_casual_weekday <- cbind(casual, member)
+```
+
+
+
+# Data visualization
+#### To visualize the number of rides by rider type for each day
+
+```{r message=FALSE}
+a <- all_trips_v3 %>% 
+  mutate(weekday = wday(started_at, label = TRUE)) %>% 
+  group_by(member_casual, weekday) %>% 
+  summarise(number_of_rides = n()
+            ,average_duration = mean(ride_length)) %>% 
+  arrange(member_casual, weekday)  %>% 
+  ggplot(aes(x = weekday, y = number_of_rides, fill = member_casual)) +
+  geom_col(position = "dodge")
+```
+
+```{r}
+a + labs(title = "Average duration by rider type for each day")
+```
+
+#### To visualize the average duration by rider type for each day
+
+```{r message=FALSE}
+b <- all_trips_v3 %>% 
+  mutate(weekday = wday(started_at, label = TRUE)) %>% 
+  group_by(member_casual, weekday) %>% 
+  summarise(number_of_rides = n()
+            ,average_duration = mean(ride_length)) %>% 
+  arrange(member_casual, weekday)  %>% 
+  ggplot(aes(x = weekday, y = average_duration, fill = member_casual)) +
+  geom_col(position = "dodge")
+```
+
+```{r}
+b + labs("Average duration by rider type for each day")
+```
+
+
+
+#### How long do users tend to use bike?
+These are the unique ride_lengths with number of rides associated with them
+
+```{r message=FALSE}
+my_df <- all_trips_v3 %>%
+  group_by(ride_length) %>%
+  summarize(number_of_rides = n()) %>%
+  arrange(desc(number_of_rides))
+```
+
+
+
+
